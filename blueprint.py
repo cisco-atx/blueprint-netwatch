@@ -1,0 +1,33 @@
+from flask import Blueprint
+
+from . import routes, services
+
+class NetWatch(Blueprint):
+    meta = {
+        "name": "NetWatch",
+        "description": "Real-time network interface watcher",
+        "version": "1.0.0",
+        "icon": "netwatch.ico",
+        "url_prefix": "/netwatch",
+    }
+
+    def __init__(self, **kwargs):
+        super().__init__(
+            "netwatch",
+            __name__,
+            url_prefix=self.meta["url_prefix"],
+            template_folder="templates",
+            static_folder="static",
+            **kwargs,
+        )
+
+        self.routes = routes
+        self.services = services
+        self.setup_routes()
+
+    def setup_routes(self):
+        self.add_url_rule("/", view_func=self.routes.render_netwatch, methods=["GET"])
+        self.add_url_rule("/start", view_func=self.routes.start_watch, methods=["POST"])
+        self.add_url_rule("/stop", view_func=self.routes.stop_watch, methods=["POST"])
+        self.add_url_rule("/clear", view_func=self.routes.clear_watch, methods=["POST"])
+        self.add_url_rule("/stream",view_func=self.routes.stream)

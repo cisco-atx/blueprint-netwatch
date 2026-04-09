@@ -1,0 +1,50 @@
+{% extends "atx.home.html" %}
+
+{% block full_content %}
+
+<link rel="stylesheet" id="theme-stylesheet" href="{{ url_for('netwatch.static', filename='css/common.css') }}">
+<script src="{{ url_for('netwatch.static', filename='js/netwatch.js') }}"></script>
+
+
+<div class="netwatch-actions">
+    <input id="devices" placeholder="10.1.1.1, 10.1.1.2" style="width: 100%;">
+
+    <button class="icon-text" id="startBtn" onclick="startWatch()">
+        <span class="material-icons">play_arrow</span> Start
+    </button>
+
+    <button class="icon-text" id="stopBtn" onclick="stopWatch()" disabled>
+        <span class="material-icons">stop</span> Stop
+    </button>
+
+    <button class="icon-text" id="clearBtn" onclick="clearWatch()">
+        <span class="material-icons">clear_all</span> Clear
+    </button>
+</div>
+
+<div class="netwatch-status-bar">
+    <div style="font-weight: 600;">Status:</div>
+    <span id="statusText">Idle</span>
+</div>
+
+<div class="netwatch-table-container">
+    <table id="watchTable" class="display">
+        <thead>
+        <tr>
+            <th>Device</th>
+            <th>Interface</th>
+            <th>Status</th>
+            <th>Neighbor</th>
+        </tr>
+        <tr>
+            <th><input type="text" class="col-filter" data-col="0" placeholder="Filter Device"></th>
+            <th><input type="text" class="col-filter" data-col="1" placeholder="Filter Interface"></th>
+            <th><input type="text" class="col-filter" data-col="2" placeholder="Filter Status"></th>
+            <th><input type="text" class="col-filter" data-col="3" placeholder="Filter Neighbor"></th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+{% endblock %}
