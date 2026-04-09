@@ -17,16 +17,9 @@ def start_watch():
 
     payload = request.json or {}
     devices = [d.strip() for d in payload.get("devices", "").split(",") if d.strip()]
-    _credentials = {
-        "jumphost_ip": "10.122.4.206",
-        "jumphost_username": "cmluser",
-        "jumphost_password": "cm1user",
-        "network_username": "cisco",
-        "network_password": "cisco",
-    }
-    credentials = payload.get("credentials", {}) or _credentials
+    connector = payload.get("config")
 
-    watcher_instance = Watcher(devices, credentials)
+    watcher_instance = Watcher(devices, connector)
     watcher_instance.start()
     return jsonify({"status": "started"})
 

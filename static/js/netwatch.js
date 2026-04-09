@@ -1,6 +1,7 @@
 let table;
 let watcherEventStream;
 let isRunning = false;
+let currentColumns = [];
 
 const BUTTONS = {
     start: {
@@ -15,9 +16,12 @@ const BUTTONS = {
 };
 
 $(document).ready(function () {
-    initTable();
-    bindFilters();
     initStream();
+    document.getElementById("startBtn").addEventListener("click", () => {
+        RunModal.open(({ config }) => {
+            startWatch(config);
+        });
+    });
 });
 
 function initTable() {
@@ -53,26 +57,100 @@ function initStream() {
     }
 }
 
+function getDynamicColumns(dataset) {
+    const columns = ["Device", "Interface"];
+    const dynamicKeys = new Set();
+
+    Object.values(dataset).forEach(interfaces => {
+        Object.values(interfaces).forEach(row => {
+            Object.keys(row).forEach(key => dynamicKeys.add(key));
+        });
+    });
+
+    return [...columns, ...Array.from(dynamicKeys)];
+}
+
 function updateUi(event) {
     const payload = JSON.parse(event.data);
+    const dataset = payload.data || {};
+
+    $("#statusText").text(payload.message || "Idle");
+    setRunningState(payload.running || false);
+
+    if (Object.keys(dataset).length === 0) {
+        return;
+    }
+
+    const discoveredColumns = getDynamicColumns(dataset);
+
+    if (JSON.stringify(discoveredColumns) !== JSON.stringify(currentColumns)) {
+        rebuildTable(discoveredColumns);
+        currentColumns = discoveredColumns;
+    }
+
+    populateRows(dataset, discoveredColumns);
+}
+
+function rebuildTable(columns) {
+    if ($.fn.DataTable.isDataTable("#watchTable")) {
+        table.destroy();
+    }
+
+    const thead = `
+        <tr>
+            ${columns.map(col => `<th>${col}</th>`).join("")}
+        </tr>
+        <tr>
+            ${columns.map((_, idx) =>
+                `<th><input type="text" class="col-filter" data-col="${idx}" placeholder="Filter"></th>`
+            ).join("")}
+        </tr>
+    `;
+
+    $("#watchTable thead").html(thead);
+    $("#watchTable tbody").empty();
+
+    table = $("#watchTable").DataTable({
+        orderCellsTop: true,
+        fixedHeader: true,
+        paging: false,
+        searching: true,
+        info: false,
+        autoWidth: false
+    });
+
+    bindFilters();
+}
+
+function populateRows(dataset, columns) {
+    if (!table) return;
 
     table.clear();
 
-    Object.entries(payload.data || {}).forEach(([device, interfaces]) => {
+    Object.entries(dataset).forEach(([device, interfaces]) => {
         Object.entries(interfaces).forEach(([iface, row]) => {
-            table.row.add([
-                device,
-                iface,
-                formatStatusBadge(row.Status),
-                row.Neighbor || ''
-            ]);
+            const rowData = columns.map(col => {
+                if (col === "Device") return device;
+                if (col === "Interface") return iface;
+
+                const value = row[col];
+
+                if (Array.isArray(value)) {
+                    return value.join("<br>");
+                }
+
+                if (col === "Status") {
+                    return formatStatusBadge(value);
+                }
+
+                return value || "";
+            });
+
+            table.row.add(rowData);
         });
     });
 
     table.draw(false);
-
-    $("#statusText").text(payload.message || "Idle");
-    setRunningState(payload.running || false);
 }
 
 function formatStatusBadge(status) {
@@ -106,7 +184,8 @@ function setClearState(cleared = false) {
     );
 }
 
-function startWatch() {
+
+async function startWatch(config) {
     const devices = $("#devices").val();
     if (!devices || devices.length === 0) {
         alert("Please enter at least one device.");
@@ -123,7 +202,7 @@ function startWatch() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             devices,
-            credentials: {}
+            config: config
         })
     }).catch(() => {
         setRunningState(false);

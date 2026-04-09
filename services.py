@@ -27,6 +27,11 @@ class Watcher:
                 return f"{label}{port.group(1)}" if port else iface
         return iface
 
+    def normalize_link(self, link):
+        if isinstance(link, int) or (isinstance(link, str) and link.isdigit()):
+            return f"Access (Vlan{link})"
+        return link.title()
+
     def create_handlers(self):
         futures = {}
         self.status = "Connecting to devices..."
@@ -118,30 +123,23 @@ class Watcher:
             links[iface] = {}
             links[iface].update({
                 "Status": iface_props.get("status"),
-                "Link": iface_props.get("vlan"),
+                "Link": self.normalize_link(iface_props.get("vlan_id")),
                 "Duplex": iface_props.get("duplex"),
                 "Speed": iface_props.get("speed"),
-                "Media Type": iface_props.get("type")
             })
             for cdp_iface, cdp_props in cdp_data.items():
                 if self.normalize_iface(cdp_iface) == iface:
                     links[iface].update({
                         "Neighbor": cdp_props.get("neighbor"),
-                        "Platform": cdp_props.get("platform"),
-                        "Capabilities": cdp_props.get("capabilities"),
-                        "Remote Interface": self.normalize_iface(
-                            cdp_props.get("remote_interface", "")
-                        ),
+                        "Platform": cdp_props.get("platform")
                     })
             links[iface]["Mac Address"] = []
-            links[iface]["VLAN"] = []
-            links[iface]["Arp"] = []
+            links[iface]["IP Address"] = []
             links[iface]["Hostname"] = []
             for mac, mac_props in mac_data.items():
                 if self.normalize_iface(mac_props.get("ports", "")) == iface:
                     links[iface]["Mac Address"].append(mac)
-                    links[iface]["VLAN"].append(mac_props.get("vlan_id"))
                     ip = arp_data.get(mac, {}).get("ip_address", "")
-                    links[iface]["Arp"].append(ip)
+                    links[iface]["IP Address"].append(ip)
                     links[iface]["Hostname"].append(socket.getfqdn(ip) if ip else "")
         return links
