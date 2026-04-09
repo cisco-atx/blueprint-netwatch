@@ -12,6 +12,7 @@ class NetWatch(Blueprint):
     }
 
     def __init__(self, **kwargs):
+        """Initialize the NetWatch blueprint."""
         super().__init__(
             "netwatch",
             __name__,
@@ -26,6 +27,7 @@ class NetWatch(Blueprint):
         self.setup_routes()
 
     def setup_routes(self):
+        """Define the URL routes for the NetWatch blueprint."""
         self.add_url_rule("/", view_func=self.routes.render_netwatch, methods=["GET"])
         self.add_url_rule("/start", view_func=self.routes.start_watch, methods=["POST"])
         self.add_url_rule("/stop", view_func=self.routes.stop_watch, methods=["POST"])

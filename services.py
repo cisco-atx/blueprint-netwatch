@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from netcore import GenericHandler
 
 class Watcher:
+    """Watcher class to monitor network devices and collect interface data."""
     def __init__(self, devices, connector, interval=2):
         self.devices = devices
         self.connector = connector
@@ -33,6 +34,7 @@ class Watcher:
         return link.title()
 
     def create_handlers(self):
+        """Create handlers for each device using a thread pool for concurrent connections."""
         futures = {}
         self.status = "Connecting to devices..."
         with ThreadPoolExecutor(max_workers=8) as executor:
@@ -72,6 +74,7 @@ class Watcher:
                 logging.error(f"Failed to connect {device}: {e}")
 
     def destroy_handlers(self):
+        """Disconnect from all devices and clear handlers."""
         self.status = "Disconnecting from devices..."
         for device, handler in list(self.handlers.items()):
             try:
@@ -84,6 +87,7 @@ class Watcher:
         self.handlers.clear()
 
     def start(self):
+        """Start the watcher thread if it's not already running."""
         if not self.thread or not self.thread.is_alive():
             self.status = "Starting watcher..."
             self.stop_event.clear()
@@ -93,6 +97,7 @@ class Watcher:
             self.thread.start()
 
     def stop(self):
+        """Stop the watcher thread and disconnect from devices."""
         self.status = "Stopping watcher..."
         self.stop_event.set()
         self.is_running = False
@@ -101,6 +106,7 @@ class Watcher:
         self.destroy_handlers()
 
     def watch_loop(self):
+        """Main loop to poll data from devices at regular intervals until stopped."""
         while not self.stop_event.is_set():
             consolidated = {}
             for device, handler in list(self.handlers.items()):
@@ -111,6 +117,7 @@ class Watcher:
             self.stop_event.wait(self.interval)
 
     def collect(self, handler):
+        """Collect interface data from a device using the handler. This includes interface status, CDP neighbors, MAC addresses, and ARP entries."""
         self.status = f"Polling data from {handler.host}..."
         iface_data = handler.sendCommand(cmd="show interface status",autoParse=True, key="interface")
         cdp_data = handler.sendCommand(cmd="show cdp neighbors", autoParse=True, key="local_interface")

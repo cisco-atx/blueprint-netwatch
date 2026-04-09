@@ -8,9 +8,11 @@ from .services import Watcher
 watcher_instance = None
 
 def render_netwatch():
+    """Renders the NetWatch page."""
     return render_template("netwatch.html")
 
 def start_watch():
+    """Starts the watcher based on the provided devices and configuration."""
     global watcher_instance
     if watcher_instance and watcher_instance.is_running:
         return jsonify({"status": "already_running"})
@@ -24,12 +26,14 @@ def start_watch():
     return jsonify({"status": "started"})
 
 def stop_watch():
+    """Stops the watcher if it is currently running."""
     global watcher_instance
     if watcher_instance:
         watcher_instance.stop()
     return jsonify({"status": "stopped"})
 
 def clear_watch():
+    """Clears the watcher's data and resets its status. This does not stop the watcher if it is running."""
     global watcher_instance
     if watcher_instance:
         watcher_instance.data = {}
@@ -37,6 +41,7 @@ def clear_watch():
     return {"status": "cleared"}, 200
 
 def stream():
+    """Streams the watcher's status and data to the client using Server-Sent Events (SSE)."""
     def generate():
         while True:
             if watcher_instance:
