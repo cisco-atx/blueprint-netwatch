@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ session.get('userdata', {}).get('theme', 'light') }}">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ATX</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='img/cisco.svg') }}" type="image/x-icon">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css"/>
+    <link rel="stylesheet" id="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <link rel="stylesheet" id="theme-stylesheet" href="{{ url_for('netwatch.static', filename='css/common.css') }}">
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="{{ url_for('netwatch.static', filename='js/netwatch.public.js') }}"></script>
+</head>
+
+<body>
+<main id="mainLayout">
+    <div class="content" id="mainLayoutContent">
+        <div class="netwatch-status-bar">
+            <div style="font-weight: 600;">Status:</div>
+            <span id="statusText">Idle</span>
+        </div>
+
+        <div class="netwatch-table-container" style="height: calc(100% - 40px);">
+            <table id="watchTable" class="display" style="width:100%">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>

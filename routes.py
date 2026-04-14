@@ -62,3 +62,10 @@ def stream():
             "X-Accel-Buffering": "no"
         }
     )
+
+def render_public_watch():
+    return render_template("netwatch.public.html")
+
+def public_stream():
+    """Streams the watcher's status and data to the client using Server-Sent Events (SSE) for public access."""
+    return stream()

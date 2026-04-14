@@ -1,4 +1,4 @@
-from flask import Blueprint
+from flask import Blueprint, current_app
 
 from . import routes, services
 
@@ -33,3 +33,5 @@ class NetWatch(Blueprint):
         self.add_url_rule("/stop", view_func=self.routes.stop_watch, methods=["POST"])
         self.add_url_rule("/clear", view_func=self.routes.clear_watch, methods=["POST"])
         self.add_url_rule("/stream",view_func=self.routes.stream)
+        self.add_url_rule("/public", view_func=current_app.routes.no_auth_required(self.routes.render_public_watch), methods=["GET", "POST"])
+        self.add_url_rule("/public_stream", view_func=current_app.routes.no_auth_required(self.routes.public_stream))
