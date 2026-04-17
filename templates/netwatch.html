@@ -2,55 +2,71 @@
 
 {% block full_content %}
 
-<link rel="stylesheet" id="theme-stylesheet" href="{{ url_for('netwatch.static', filename='css/common.css') }}">
+<link rel="stylesheet" href="{{ url_for('netwatch.static', filename='css/common.css') }}">
+<script src="{{ url_for('netwatch.static', filename='js/netwatch.api.js') }}"></script>
 <script src="{{ url_for('netwatch.static', filename='js/netwatch.js') }}"></script>
-<script src="{{ url_for('static', filename='js/atx.utils.js') }}"></script>
+<div class="netwatch-topbar">
+    <div class="breadcrumb">
+        <a href="/netwatch">Netwatch</a>
+        <span class="sep">></span>
+        <span class="current">Watchers</span>
+    </div>
+    <div class="netwatch-actions">
+        <button class="icon-text" id="createWatcherBtn">
+            <span class="material-icons">shutter_speed_add</span> Create
+        </button>
 
-
-<div class="netwatch-actions">
-    <input id="devices" placeholder="10.1.1.1, 10.1.1.2" style="width: 100%;">
-
-    <button class="icon-text" id="startBtn">
-        <span class="material-icons">play_arrow</span> Start
-    </button>
-
-    <button class="icon-text" id="stopBtn" onclick="stopWatch()" disabled>
-        <span class="material-icons">stop</span> Stop
-    </button>
-
-    <button class="icon-text" id="clearBtn" onclick="clearWatch()">
-        <span class="material-icons">clear_all</span> Clear
-    </button>
+        <button class="icon-text" id="refreshWatchersBtn" onclick="loadWatchers()">
+            <span class="material-icons">refresh</span> Refresh
+        </button>
+    </div>
 </div>
 
-<div class="netwatch-status-bar">
-    <div style="font-weight: 600;">Status:</div>
-    <span id="statusText">Idle</span>
-</div>
 
 <div class="netwatch-table-container">
-    <table id="watchTable" class="display" style="width:100%">
-    <thead></thead>
-    <tbody></tbody>
-</table>
+    <table id="watchersTable" class="display" style="width:100%">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Devices</th>
+            <th>Status</th>
+            <th>Creator</th>
+            <th>Actions</th>
+        </tr>
+        <tr>
+            <th><input type="text" class="col-filter" data-col="0" placeholder="Filter"></th>
+            <th><input type="text" class="col-filter" data-col="1" placeholder="Filter"></th>
+            <th><input type="text" class="col-filter" data-col="2" placeholder="Filter"></th>
+            <th><input type="text" class="col-filter" data-col="3" placeholder="Filter"></th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 </div>
 
-<!-- Run Modal -->
-<div class="simple-modal-overlay" id="runModal">
-    <div class="simple-modal-container" style="width: 600px;">
+<!-- Create Watcher Modal -->
+<div class="simple-modal-overlay" id="createWatcherModal">
+    <div class="simple-modal-container" style="width: 650px;">
 
         <div class="simple-modal-header">
-            <div class="simple-modal-title">Run</div>
-            <button class="close" id="closeRunModal">
+            <div class="simple-modal-title">Create Watcher</div>
+            <button class="close" id="closeCreateWatcherModal">
                 <span class="material-icons">close</span>
             </button>
         </div>
 
         <div class="simple-modal-body">
-            <form id="runModalForm">
-                <div class="form-group-row">
+            <form id="createWatcherForm">
+                <div class="form-grid" style="grid-template-columns: max-content auto;">
+                    <label>Name</label>
+                    <input type="text" id="watcherName" required placeholder="Enter watcher name">
+
+                    <label>Devices</label>
+                    <input type="text" id="watcherDevices" required placeholder="10.1.1.1, 10.1.1.2">
+
                     <label>Connector</label>
-                    <select id="runModalConnectors" required>
+                    <select id="watcherConnector" required>
                         <option value="">-- Select Connector --</option>
                     </select>
                 </div>
@@ -58,8 +74,39 @@
         </div>
 
         <div class="simple-modal-footer">
-            <button type="submit" form="runModalForm" id="confirmRunModal" class="icon-text">
-                <span class="material-icons">play_arrow</span> Run
+            <button type="submit" form="createWatcherForm" id="confirmCreateWatcher" class="icon-text">
+                <span class="material-icons">shutter_speed_add</span> Create
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<div class="simple-modal-overlay" id="shareModal">
+    <div class="simple-modal-container" style="width: 500px;">
+
+        <div class="simple-modal-header">
+            <div class="simple-modal-title">Share Watcher</div>
+            <button class="close" onclick="closeShareModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+
+        <div class="simple-modal-body">
+            <div class="form-grid" style="grid-template-columns: max-content auto;">
+
+                <label>URL</label>
+                <input type="text" id="shareUrl" readonly>
+
+                <label>PIN</label>
+                <input type="text" id="sharePin" readonly>
+
+            </div>
+        </div>
+
+        <div class="simple-modal-footer">
+            <button id="generateShareBtn" class="icon-text">
+                <span class="material-icons">vpn_key</span> Generate PIN
             </button>
         </div>
     </div>

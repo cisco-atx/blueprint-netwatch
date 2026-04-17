@@ -5,7 +5,13 @@ let isRunning = false;
 let currentColumns = [];
 
 $(document).ready(function () {
-    initStream();
+    $("#pinInput").on("keypress", function (e) {
+        if (e.which === 13) {
+            submitPin();
+        }
+    });
+
+    $("#pinInput").focus();
 });
 
 /*
@@ -38,6 +44,54 @@ function initStream() {
     }
 }
 
+function submitPin() {
+    const pin = $("#pinInput").val().trim();
+
+    if (!pin || pin.length !== 4) {
+        alert("Enter valid 4-digit PIN");
+        return;
+    }
+
+    connectStream(pin);
+}
+
+function connectStream(pin) {
+    if (watcherEventStream) {
+        watcherEventStream.close();
+    }
+
+    $("#statusText").text("Connecting...");
+
+    watcherEventStream = new EventSource(
+        `/netwatch/${WATCHER_ID}/public/stream?pin=${pin}`
+    );
+
+    watcherEventStream.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+
+        if (payload.error) {
+            alert("Invalid PIN or access denied");
+            watcherEventStream.close();
+            return;
+        }
+
+        $("#pinModal").hide();
+
+        updateUi(event);
+    };
+
+    watcherEventStream.onerror = () => {
+        console.warn("Stream lost. Reconnecting...");
+
+        watcherEventStream.close();
+
+        setTimeout(() => {
+            connectStream(pin);
+        }, 2000);
+    };
+}
+
+
 /*
  * Extracts dynamic column names from the dataset.
  * It starts with fixed columns "Device" and "Interface" and adds any unique keys found in the data.
@@ -61,9 +115,18 @@ function getDynamicColumns(dataset) {
  */
 function updateUi(event) {
     const payload = JSON.parse(event.data);
+
+    if (payload.error) {
+        alert("Invalid PIN or access denied");
+        watcherEventStream.close();
+        return;
+    }
+
     const dataset = payload.data || {};
+    const running = payload.running || false;
 
     $("#statusText").text(payload.message || "Idle");
+    updateStatusBadge(payload.status || (running ? "running" : "stopped"));
 
     if (Object.keys(dataset).length === 0) {
         return;
@@ -112,6 +175,21 @@ function rebuildTable(columns) {
     });
 
     bindFilters();
+}
+
+
+function updateStatusBadge(status) {
+    const value = (status || "init").toUpperCase();
+
+    let cssClass = "status-info";
+
+    if (value === "RUNNING") cssClass = "status-pass";
+    else if (value === "STOPPED") cssClass = "status-fail";
+
+    $("#statusBadge")
+        .removeClass("status-pass status-fail status-info")
+        .addClass(cssClass)
+        .text(value);
 }
 
 /*

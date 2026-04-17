@@ -15,6 +15,10 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
     <script src="{{ url_for('netwatch.static', filename='js/netwatch.public.js') }}"></script>
+
+    <script>
+        const WATCHER_ID = "{{ watcher_id }}";
+    </script>
 </head>
 
 <body>
@@ -22,7 +26,10 @@
     <div class="content" id="mainLayoutContent">
         <div class="netwatch-status-bar">
             <div style="font-weight: 600;">Status:</div>
-            <span id="statusText">Idle</span>
+            <span id="statusText">Loading...</span>
+            <span id="statusBadge" class="badge status-info" style="margin-left:auto;">
+                INIT
+            </span>
         </div>
 
         <div class="netwatch-table-container" style="height: calc(100% - 40px);">
@@ -35,3 +42,24 @@
 </main>
 </body>
 </html>
+
+<div id="pinModal" class="simple-modal-overlay" style="display:flex;">
+    <div class="simple-modal-container" style="width: 400px;">
+
+        <div class="simple-modal-header">
+            <div class="simple-modal-title">
+                Access to Watcher "{{ watcher_name }}"
+            </div>
+        </div>
+
+        <div class="simple-modal-body">
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <input id="pinInput" type="text" maxlength="4" placeholder="Enter 4-digit PIN">
+            </div>
+        </div>
+
+        <div class="simple-modal-footer">
+            <button onclick="submitPin()">Connect</button>
+        </div>
+    </div>
+</div>

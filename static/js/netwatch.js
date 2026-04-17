@@ -1,305 +1,318 @@
-/* NetWatch
-    * A dynamic interface for monitoring network devices and interfaces in real-time.
-    * Features:
-        - Real-time updates via Server-Sent Events (SSE)
-        - Dynamic table generation based on incoming data structure
-        - Column-based filtering for easy data exploration
-        - Status badges with color coding for quick visual identification
-        - Start, Stop, and Clear controls for managing the monitoring process
-*/
+/* NetWatch - Watchers List Page */
 
-let table;
-let watcherEventStream;
-let isRunning = false;
-let currentColumns = [];
+let watchersTable = null;
+let createWatcherCallback = null;
+let watchersStream = null;
 
-const BUTTONS = {
-    start: {
-        idle: '<span class="material-icons">play_arrow</span> Start',
-        running: '<span class="material-icons spin">autorenew</span> Running...',
-        stopping: '<span class="material-icons spin">sync</span> Stopping...'
-    },
-    clear: {
-        default: '<span class="material-icons">clear_all</span> Clear',
-        cleared: '<span class="material-icons">delete_sweep</span> Cleared'
-    }
-};
-
+/* =========================
+   INIT
+========================= */
 $(document).ready(function () {
-    initStream();
-    document.getElementById("startBtn").addEventListener("click", () => {
-        RunModal.open(({ config }) => {
-            startWatch(config);
+    initTable();
+    bindFilters();
+    initWatchersStream();
+    initCreateWatcherModal();
+
+    $("#createWatcherBtn").on("click", function () {
+        openCreateWatcherModal(payload => {
+            createWatcher(payload);
         });
     });
 });
 
-/*
- * Initializes the DataTable with basic configuration.
- * This is called once on page load and whenever the table structure changes.
- */
+/* =========================
+    SSE STREAM
+========================= */
+
+function initWatchersStream() {
+    if (watchersStream) return;
+
+    watchersStream = new EventSource("/netwatch/watchers/stream");
+
+    watchersStream.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        populateWatchers(data);
+    };
+
+    watchersStream.onerror = () => {
+        console.warn("Stream lost. Reconnecting...");
+
+        watchersStream.close();
+        watchersStream = null;
+
+        setTimeout(initWatchersStream, 2000);
+    };
+}
+
+/* =========================
+   TABLE SETUP
+========================= */
 function initTable() {
-    table = $('#watchTable').DataTable({
+    watchersTable = $("#watchersTable").DataTable({
         orderCellsTop: true,
         fixedHeader: true,
         paging: false,
         searching: true,
         info: false,
-        autoWidth: false
+        autoWidth: false,
+        columns: [
+            { title: "Name" },
+            { title: "Devices" },
+            { title: "Status" },
+            { title: "Creator" },
+            { title: "Actions", orderable: false }
+        ]
     });
 }
 
-/*
- * Binds event listeners to the filter inputs in the table header.
- * This allows for real-time filtering of the table based on user input.
- */
 function bindFilters() {
-    $('#watchTable thead tr:eq(1) th input.col-filter').each(function () {
+    $('#watchersTable thead tr:eq(1) th input.col-filter').each(function () {
         const colIndex = $(this).data('col');
 
         $(this).on('keyup change clear', function () {
             const val = this.value;
 
-            if (table.column(colIndex).search() !== val) {
-                table.column(colIndex).search(val).draw();
+            if (watchersTable.column(colIndex).search() !== val) {
+                watchersTable.column(colIndex).search(val).draw();
             }
         });
     });
 }
 
-/*
- * Initializes the EventSource to listen for updates from the server.
- * When a message is received, it calls updateUi to refresh the table and status.
- */
-function initStream() {
-    if (!watcherEventStream) {
-        watcherEventStream = new EventSource("/netwatch/stream");
-        watcherEventStream.onmessage = updateUi;
-        watcherEventStream.onerror = () => console.warn("Stream disconnected");
+
+/* =========================
+   DATA LOADING
+========================= */
+async function loadWatchers() {
+    try {
+        const data = await NetwatchAPI.listWatchers();
+        populateWatchers(data);
+    } catch (err) {
+        console.error("Failed to load watchers", err);
     }
 }
 
-/*
- * Extracts dynamic column names from the dataset.
- * It starts with fixed columns "Device" and "Interface" and adds any unique keys found in the data.
- */
-function getDynamicColumns(dataset) {
-    const columns = ["Device", "Interface"];
-    const dynamicKeys = new Set();
+function populateWatchers(data) {
+    watchersTable.clear();
 
-    Object.values(dataset).forEach(interfaces => {
-        Object.values(interfaces).forEach(row => {
-            Object.keys(row).forEach(key => dynamicKeys.add(key));
-        });
+    data.forEach(row => {
+        const statusBadge = NetwatchUI.formatStatusBadge(row.status);
+
+        const nameLink = `
+            <a class="watcher-link-text" href="/netwatch/${row.id}">
+                ${NetwatchUI.escapeHtml(row.name)}
+            </a>
+        `;
+        const actions = (row.creator === CURRENT_USERNAME) ? renderActionButtons(row) : "";
+
+        watchersTable.row.add([
+            nameLink,
+            NetwatchUI.escapeHtml(row.devices),
+            statusBadge,
+            NetwatchUI.escapeHtml(row.creator),
+            actions
+        ]);
     });
 
-    return [...columns, ...Array.from(dynamicKeys)];
+    watchersTable.draw(false);
 }
 
-/*
- * Updates the UI based on the incoming data from the EventSource.
- * It updates the status text, running state, and rebuilds the table if new columns are detected.
- */
-function updateUi(event) {
-    const payload = JSON.parse(event.data);
-    const dataset = payload.data || {};
 
-    $("#statusText").text(payload.message || "Idle");
-    setRunningState(payload.running || false);
+/* =========================
+   ACTION BUTTONS
+========================= */
+function renderActionButtons(row) {
+    const isRunning = (row.status || "").toUpperCase() === "RUNNING";
 
-    if (Object.keys(dataset).length === 0) {
-        return;
-    }
+    return `
+        <div style="display:flex; gap:6px;">
+            <button class="icon-text"
+                onclick="toggleWatcher('${row.id}', '${row.status}', this)">
+                ${isRunning ? NetwatchUI.buttons.stop : NetwatchUI.buttons.start}
+            </button>
 
-    const discoveredColumns = getDynamicColumns(dataset);
+            <button class="icon-text"
+                onclick="openShareModal('${row.id}')">
+                <span class="material-icons">share</span> Share
+            </button>
 
-    if (JSON.stringify(discoveredColumns) !== JSON.stringify(currentColumns)) {
-        rebuildTable(discoveredColumns);
-        currentColumns = discoveredColumns;
-    }
-
-    populateRows(dataset, discoveredColumns);
-}
-
-/*
- * Rebuilds the DataTable with the specified columns.
- * It destroys the existing table instance if it exists, updates the table header, and initializes a new DataTable.
- */
-function rebuildTable(columns) {
-    if ($.fn.DataTable.isDataTable("#watchTable")) {
-        table.destroy();
-    }
-
-    const thead = `
-        <tr>
-            ${columns.map(col => `<th>${col}</th>`).join("")}
-        </tr>
-        <tr>
-            ${columns.map((_, idx) =>
-                `<th><input type="text" class="col-filter" data-col="${idx}" placeholder="Filter"></th>`
-            ).join("")}
-        </tr>
+            <button class="icon-text"
+                onclick="deleteWatcher('${row.id}', this)">
+                ${NetwatchUI.buttons.delete}
+            </button>
+        </div>
     `;
-
-    $("#watchTable thead").html(thead);
-    $("#watchTable tbody").empty();
-
-    table = $("#watchTable").DataTable({
-        orderCellsTop: true,
-        fixedHeader: true,
-        paging: false,
-        searching: true,
-        info: false,
-        autoWidth: false
-    });
-
-    bindFilters();
 }
 
-/*
- * Populates the DataTable with rows based on the provided dataset and column configuration.
- * It formats values appropriately, including handling arrays and status badges.
- */
-function populateRows(dataset, columns) {
-    if (!table) return;
 
-    table.clear();
+async function openShareModal(watcherId) {
+    const modal = document.getElementById("shareModal");
+    modal.style.display = "flex";
 
-    Object.entries(dataset).forEach(([device, interfaces]) => {
-        Object.entries(interfaces).forEach(([iface, row]) => {
-            const rowData = columns.map(col => {
-                if (col === "Device") return device;
-                if (col === "Interface") return iface;
-
-                const value = row[col];
-
-                if (Array.isArray(value)) {
-                    return value.join("<br>");
-                }
-
-                if (col === "Status") {
-                    return formatStatusBadge(value);
-                }
-
-                return value || "";
-            });
-
-            table.row.add(rowData);
+    document.getElementById("generateShareBtn").onclick = async () => {
+        const res = await fetch(`/netwatch/${watcherId}/public/enable`, {
+            method: "POST"
         });
-    });
 
-    table.draw(false);
-}
+        const data = await res.json();
 
-/*
- * Formats the status value into a styled badge.
- * It assigns different CSS classes based on the status value for visual distinction.
- */
-function formatStatusBadge(status) {
-    const value = (status || '').toLowerCase();
-
-    let cssClass = 'status-info';
-    let label = status || 'UNKNOWN';
-    if (value === 'connected') {
-        cssClass = 'status-pass';
-    } else if (value === 'notconnec') {
-        cssClass = 'status-warn';
-    } else if (value === 'disabled') {
-        cssClass = 'status-notrun';
-    }
-    return `<span class="badge ${cssClass}">${label.toUpperCase()}</span>`;
-}
-
-
-/* Updates the state of the Start and Stop buttons based on whether NetWatch is running.
- * When running, the Start button is disabled and shows a "Running..." state, while the Stop button is enabled.
- * When not running, the Start button is enabled and shows "Start", while the Stop button is disabled.
- */
-function setRunningState(running) {
-    isRunning = running;
-    $("#startBtn")
-        .prop("disabled", running)
-        .html(running ? BUTTONS.start.running : BUTTONS.start.idle);
-    $("#stopBtn")
-        .prop("disabled", !running);
-}
-
-/* Updates the Clear button's state and label based on whether the data has been cleared.
- * When cleared, the button shows a "Cleared" state; otherwise, it shows the default "Clear" label.
- */
-function setClearState(cleared = false) {
-    $("#clearBtn").html(
-        cleared ? BUTTONS.clear.cleared : BUTTONS.clear.default
-    );
-}
-
-
-/* Starts the NetWatch process by sending a POST request to the server with the selected devices and configuration.
- * It also initializes the EventSource stream if it hasn't been initialized yet and updates the UI state to reflect that NetWatch is running.
- */
-async function startWatch(config) {
-    const devices = $("#devices").val();
-    if (!devices || devices.length === 0) {
-        alert("Please enter at least one device.");
-        return;
-    }
-    if (!watcherEventStream) {
-        initStream();
-    }
-    setRunningState(true);
-    setClearState(false);
-
-    fetch("/netwatch/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            devices,
-            config: config
-        })
-    }).catch(() => {
-        setRunningState(false);
-        alert("Failed to start NetWatch");
-    });
-}
-
-/*
-* Stops the NetWatch process by sending a POST request to the server.
-* It updates the UI state to reflect that NetWatch is stopping and disables the Start button while the stop request is in progress.
-* Once the request is complete, it resets the Stop button label and updates the running state to false.
-*/
-function stopWatch() {
-    const stopBtn = $("#stopBtn");
-    const startBtn = $("#startBtn");
-    stopBtn.prop("disabled", true).html(BUTTONS.start.stopping);
-    startBtn.prop("disabled", true);
-    fetch("/netwatch/stop", {
-        method: "POST"
-    })
-    .finally(() => {
-        stopBtn.html('<span class="material-icons">stop</span> Stop');
-        setRunningState(false);
-    });
-}
-
-/* Clears the NetWatch data by sending a POST request to the server.
- * It checks if NetWatch is currently running and prompts the user to stop it before clearing.
- * Once the clear request is complete, it closes the EventSource stream, clears the DataTable, updates the status text, and sets the Clear button state to "Cleared".
- */
-function clearWatch() {
-    if (isRunning) {
-        alert("Please stop NetWatch before clearing.");
-        return;
-    }
-    fetch("/netwatch/clear", {
-        method: "POST"
-    })
-    .finally(() => {
-        if (watcherEventStream) {
-            watcherEventStream.close();
-            watcherEventStream = null;
+        if (data.status !== "enabled") {
+            alert("Failed to enable sharing");
+            return;
         }
-        table.clear().draw(false);
-        $("#statusText").text("Cleared");
-        setClearState(true);
+
+        document.getElementById("shareUrl").value =
+            `${window.location.origin}${data.url}`;
+
+        document.getElementById("sharePin").value = data.pin;
+    };
+}
+
+
+function closeShareModal() {
+    const modal = document.getElementById("shareModal");
+    if (modal) {
+        modal.style.display = "none";
+    }
+}
+
+async function toggleWatcher(id, status, btn) {
+    const isRunning = (status || "").toUpperCase() === "RUNNING";
+
+    if (isRunning) {
+        await stopWatcher(id, btn);
+    } else {
+        await startWatcher(id, btn);
+    }
+}
+
+async function startWatcher(id, btn) {
+    NetwatchUI.setLoading(btn, NetwatchUI.buttons.starting);
+
+    try {
+        await NetwatchAPI.start(id);
+    } catch (err) {
+        console.error(err);
+        alert("Failed to start watcher");
+    }
+}
+
+async function stopWatcher(id, btn) {
+    NetwatchUI.setLoading(btn, NetwatchUI.buttons.stopping);
+
+    try {
+        await NetwatchAPI.stop(id);
+    } catch (err) {
+        console.error(err);
+        alert("Failed to stop watcher");
+    }
+}
+
+async function deleteWatcher(id, btn) {
+    if (!confirm("Delete this watcher?")) return;
+
+    NetwatchUI.setLoading(btn, NetwatchUI.buttons.deleting);
+
+    try {
+        await NetwatchAPI.delete(id);
+    } catch (err) {
+        console.error(err);
+        alert("Failed to delete watcher");
+    }
+}
+
+
+/* =========================
+   CREATE WATCHER MODAL
+========================= */
+function initCreateWatcherModal() {
+    const modal = document.getElementById("createWatcherModal");
+    const form = document.getElementById("createWatcherForm");
+    const connectorSelect = document.getElementById("watcherConnector");
+
+    async function loadConnectors() {
+        connectorSelect.innerHTML =
+            `<option value="">-- Select Connector --</option>`;
+
+        const res = await fetch("/api/connectors");
+        const data = await res.json();
+
+        if (!data.success || !data.connectors) return;
+
+        Object.keys(data.connectors).forEach(name => {
+            const option = document.createElement("option");
+            option.value = name;
+            option.textContent = name;
+            connectorSelect.appendChild(option);
+        });
+    }
+
+    window.openCreateWatcherModal = async function (onConfirm) {
+        createWatcherCallback = onConfirm;
+        await loadConnectors();
+        modal.style.display = "flex";
+    };
+
+    function closeModal() {
+        modal.style.display = "none";
+        form.reset();
+    }
+
+    form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const name = $("#watcherName").val().trim();
+        const devices = $("#watcherDevices").val().trim();
+        const connectorName = connectorSelect.value;
+
+        if (!name) return alert("Watcher name is required");
+        if (!devices) return alert("At least one device is required");
+        if (!connectorName) return alert("Please select a connector");
+
+
+        const existingNames = watchersTable.column(0).data().toArray().map(html => {
+            const div = document.createElement("div");
+            div.innerHTML = html;
+            return div.textContent.trim();
+        });
+
+        if (existingNames.includes(name)) {
+            return alert("Watcher name already exists. Please choose a different name.");
+        }
+
+        const res = await fetch("/api/connectors");
+        const data = await res.json();
+        const config = data.connectors?.[connectorName];
+
+        if (!config) return alert("Connector not found");
+
+        closeModal();
+
+        if (typeof createWatcherCallback === "function") {
+            createWatcherCallback({ name, devices, config });
+        }
     });
+
+    $("#closeCreateWatcherModal").on("click", closeModal);
+
+    modal.addEventListener("click", function (e) {
+        if (e.target === modal) closeModal();
+    });
+}
+
+async function createWatcher(payload) {
+    try {
+        const result = await NetwatchAPI.createWatcher(payload);
+
+        if (result.status !== "created") {
+            alert(result.message || "Failed to create watcher");
+            return;
+        }
+
+        await loadWatchers();
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to create watcher");
+    }
 }

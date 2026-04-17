@@ -1,0 +1,46 @@
+{% extends "atx.home.html" %}
+
+{% block full_content %}
+
+<link rel="stylesheet" href="{{ url_for('netwatch.static', filename='css/common.css') }}">
+<script src="{{ url_for('netwatch.static', filename='js/netwatch.api.js') }}"></script>
+<script src="{{ url_for('netwatch.static', filename='js/netwatch.detail.js') }}"></script>
+
+<script>
+    window.WATCHER_ID = "{{ watcher_id }}";
+    window.WATCHER_NAME = "{{ watcher_name }}";
+</script>
+
+<div class="netwatch-topbar">
+    <div class="breadcrumb">
+        <a href="/netwatch">Netwatch</a>
+        <span class="sep">></span>
+        <span class="current">{{ watcher_name }}</span>
+    </div>
+    <div class="netwatch-actions">
+        {% if can_edit %}
+        <button class="icon-text" id="toggleBtn" onclick="toggleWatch()">
+            <span class="material-icons">play_arrow</span> Start
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+
+<div class="netwatch-status-bar">
+    <div style="font-weight: 600;">Status:</div>
+    <span id="statusText">Loading...</span>
+
+    <span id="statusBadge" class="badge status-info" style="margin-left:auto;">
+        INIT
+    </span>
+</div>
+
+<div class="netwatch-table-container">
+    <table id="watchTable" class="display" style="width:100%">
+        <thead></thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+{% endblock %}
