@@ -5,49 +5,92 @@
     <meta charset="UTF-8">
     <title>ATX</title>
 
+    <!-- Favicon and PWA Manifest -->
     <link rel="icon" href="{{ url_for('static', filename='img/cisco.svg') }}" type="image/x-icon">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css"/>
-    <link rel="stylesheet" id="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
-    <link rel="stylesheet" id="theme-stylesheet" href="{{ url_for('netwatch.static', filename='css/common.css') }}">
 
+    <!-- External Stylesheets -->
+    <link
+            rel="stylesheet"
+            href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css"
+    >
+
+    <!-- Application Styles -->
+    <link
+            rel="stylesheet"
+            id="stylesheet"
+            href="{{ url_for('static', filename='css/common.css') }}"
+    >
+    <link
+            rel="stylesheet"
+            id="theme-stylesheet"
+            href="{{ url_for('netwatch.static', filename='css/common.css') }}"
+    >
+
+    <!-- Inline Styles (existing only) -->
     <style>
+        /* Ensure material icons are fully visible */
         .material-icons {
           opacity: 1;
         }
     </style>
 
+    <!-- External Scripts -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+
+    <!-- Application Script -->
     <script src="{{ url_for('netwatch.static', filename='js/netwatch.public.js') }}"></script>
 
+    <!-- Global Variables -->
     <script>
         const WATCHER_ID = "{{ watcher_id }}";
     </script>
 </head>
 
 <body>
+<!-- Main Layout Wrapper -->
 <main id="mainLayout">
+
+    <!-- Content Container -->
     <div class="content" id="mainLayoutContent">
-        <div class="netwatch-status-bar">
+
+        <!-- =========================
+             Status Bar Section
+        ========================== -->
+        <header class="netwatch-status-bar">
             <div style="font-weight: 600;">Status:</div>
 
+            <!-- Status Badge -->
             <span id="statusBadge" class="badge info">
-                Init
-            </span>
+            Init
+          </span>
 
+            <!-- Last Updated Timestamp -->
             <div class="last-updated" style="margin-left: 10px;">
-                <span class="material-icons" style="font-size: 16px; vertical-align: middle;">schedule</span>
+            <span
+                    class="material-icons"
+                    style="font-size: 16px; vertical-align: middle;"
+            >
+              schedule
+            </span>
                 <span id="lastUpdated"></span>
             </div>
 
+            <!-- Status Text -->
             <span id="statusText" style="margin-left: auto;">
-                Initializing watcher...
-            </span>
+            Initializing watcher...
+          </span>
+        </header>
 
-        </div>
-
-        <div class="netwatch-table-container" id="tableContainer" style="height:100%;">
+        <!-- =========================
+             Table Container Section
+        ========================== -->
+        <section
+                class="netwatch-table-container"
+                id="tableContainer"
+                style="height: calc(100% - 40px);"
+        >
 
             <!-- Empty / Initial State -->
             <div id="tableEmptyState" class="table-overlay">
@@ -56,38 +99,61 @@
             </div>
 
             <!-- Loading State -->
-            <div id="tableLoadingState" class="table-overlay" style="display:none;">
-                <span class="material-icons spin" style="font-size: 36px;">autorenew</span>
+            <div
+                    id="tableLoadingState"
+                    class="table-overlay"
+                    style="display: none;"
+            >
+            <span class="material-icons spin" style="font-size: 36px;">
+              autorenew
+            </span>
                 <div>Starting watcher...</div>
             </div>
 
-            <table id="watchTable" class="display" style="width:100%">
+            <!-- Data Table -->
+            <table id="watchTable" class="display" style="width: 100%;">
                 <thead></thead>
                 <tbody></tbody>
             </table>
-        </div>
+        </section>
+
     </div>
 </main>
-</body>
-</html>
 
-<div id="pinModal" class="simple-modal-overlay" style="display:flex;">
+<!-- =========================
+     PIN Modal Overlay
+========================== -->
+<div id="pinModal" class="simple-modal-overlay" style="display: flex;">
+
+    <!-- Modal Container -->
     <div class="simple-modal-container" style="width: 400px;">
 
+        <!-- Modal Header -->
         <div class="simple-modal-header">
             <div class="simple-modal-title">
                 Access to Watcher "{{ watcher_id }}"
             </div>
         </div>
 
+        <!-- Modal Body -->
         <div class="simple-modal-body">
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <input id="pinInput" type="text" maxlength="4" placeholder="Enter 4-digit PIN">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <input
+                        id="pinInput"
+                        type="text"
+                        maxlength="4"
+                        placeholder="Enter 4-digit PIN"
+                >
             </div>
         </div>
 
+        <!-- Modal Footer -->
         <div class="simple-modal-footer">
             <button onclick="submitPin()">Connect</button>
         </div>
+
     </div>
 </div>
+
+</body>
+</html>

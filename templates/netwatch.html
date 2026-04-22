@@ -2,30 +2,49 @@
 
 {% block full_content %}
 
+<!-- ======================================================
+     External Styles and Scripts
+     ====================================================== -->
 <link rel="stylesheet" href="{{ url_for('netwatch.static', filename='css/common.css') }}">
 <script src="{{ url_for('netwatch.static', filename='js/netwatch.api.js') }}"></script>
 <script src="{{ url_for('netwatch.static', filename='js/netwatch.js') }}"></script>
-<div class="netwatch-topbar">
+
+<!-- ======================================================
+     Top Navigation Bar (Breadcrumb + Actions)
+     ====================================================== -->
+<header class="netwatch-topbar">
     <div class="breadcrumb">
         <a href="/netwatch">Netwatch</a>
         <span class="sep">></span>
         <span class="current">Watchers</span>
     </div>
+
     <div class="netwatch-actions">
+        <!-- Create Watcher Button -->
         <button class="icon-text" id="createWatcherBtn">
-            <span class="material-icons">shutter_speed_add</span> Create
+            <span class="material-icons">shutter_speed_add</span>
+            Create
         </button>
 
-        <button class="icon-text" id="refreshWatchersBtn" onclick="loadWatchers()">
-            <span class="material-icons">refresh</span> Refresh
+        <!-- Refresh Watchers Button -->
+        <button
+                class="icon-text"
+                id="refreshWatchersBtn"
+                onclick="loadWatchers()"
+        >
+            <span class="material-icons">refresh</span>
+            Refresh
         </button>
     </div>
-</div>
+</header>
 
-
-<div class="netwatch-table-container">
+<!-- ======================================================
+     Watchers Table Section
+     ====================================================== -->
+<section class="netwatch-table-container">
     <table id="watchersTable" class="display" style="width:100%">
         <thead>
+        <!-- Table Header -->
         <tr>
             <th>Name</th>
             <th>Devices</th>
@@ -33,22 +52,57 @@
             <th>Creator</th>
             <th>Actions</th>
         </tr>
+
+        <!-- Column Filters Row -->
         <tr>
-            <th><input type="text" class="col-filter" data-col="0" placeholder="Filter"></th>
-            <th><input type="text" class="col-filter" data-col="1" placeholder="Filter"></th>
-            <th><input type="text" class="col-filter" data-col="2" placeholder="Filter"></th>
-            <th><input type="text" class="col-filter" data-col="3" placeholder="Filter"></th>
+            <th>
+                <input
+                        type="text"
+                        class="col-filter"
+                        data-col="0"
+                        placeholder="Filter"
+                >
+            </th>
+            <th>
+                <input
+                        type="text"
+                        class="col-filter"
+                        data-col="1"
+                        placeholder="Filter"
+                >
+            </th>
+            <th>
+                <input
+                        type="text"
+                        class="col-filter"
+                        data-col="2"
+                        placeholder="Filter"
+                >
+            </th>
+            <th>
+                <input
+                        type="text"
+                        class="col-filter"
+                        data-col="3"
+                        placeholder="Filter"
+                >
+            </th>
             <th></th>
         </tr>
         </thead>
+
+        <!-- Table Body (Populated Dynamically) -->
         <tbody></tbody>
     </table>
-</div>
+</section>
 
-<!-- Create Watcher Modal -->
+<!-- ======================================================
+     Create Watcher Modal
+     ====================================================== -->
 <div class="simple-modal-overlay" id="createWatcherModal">
     <div class="simple-modal-container" style="width: 1000px;">
 
+        <!-- Modal Header -->
         <div class="simple-modal-header">
             <div class="simple-modal-title">Create Watcher</div>
             <button class="close" id="closeCreateWatcherModal">
@@ -56,74 +110,126 @@
             </button>
         </div>
 
+        <!-- Modal Body -->
         <div class="simple-modal-body">
             <form id="createWatcherForm">
+
+                <!-- Form Layout Grid -->
                 <div class="form-grid" style="grid-template-columns: max-content auto;">
+
+                    <!-- Watcher Name -->
                     <label>Name</label>
-                    <input type="text" id="watcherName" required placeholder="Enter watcher name">
+                    <input
+                            type="text"
+                            id="watcherName"
+                            required
+                            placeholder="Enter watcher name"
+                    >
 
+                    <!-- Devices Input -->
                     <label>Devices</label>
-                    <input type="text" id="watcherDevices" required placeholder="10.1.1.1, 10.1.1.2">
+                    <input
+                            type="text"
+                            id="watcherDevices"
+                            required
+                            placeholder="10.1.1.1, 10.1.1.2"
+                    >
 
+                    <!-- Connector + Interval -->
                     <label>Connector</label>
                     <div style="display: flex; gap: 30px; align-items: center;">
                         <select id="watcherConnector" required>
                             <option value="">-- Select Connector --</option>
                         </select>
+
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <label>Interval</label>
-                            <input type="text" placeholder="seconds" id="watcherInterval">
+                            <input
+                                    type="text"
+                                    id="watcherInterval"
+                                    placeholder="seconds"
+                            >
                         </div>
                     </div>
 
+                    <!-- Diagnostics Selection -->
                     <label>Diagnostics</label>
                     <div class="diagnostics-container">
+
+                        <!-- Available Diagnostics -->
                         <div class="diagnostics-box">
                             <div class="box-title">Available</div>
 
                             {% for category_key, category in DIAGNOSTICS.items() %}
                             <div class="diag-category">
+
+                                <!-- Category Header -->
                                 <div class="category-header">
-                                    <input type="checkbox" class="category-checkbox" data-category="{{ category_key }}">
-                                    <div class="category-header-text">{{ category.name }}</div>
-                                    <div class="category-header-source">{{ category.source }}</div>
+                                    <input
+                                            type="checkbox"
+                                            class="category-checkbox"
+                                            data-category="{{ category_key }}"
+                                    >
+                                    <div class="category-header-text">
+                                        {{ category.name }}
+                                    </div>
+                                    <div class="category-header-source">
+                                        {{ category.source }}
+                                    </div>
                                 </div>
 
+                                <!-- Category Items -->
                                 {% for diag_key, diag in category.diagnostics.items() %}
                                 <div class="category-item">
-                                    <input type="checkbox"
-                                           class="diag-checkbox"
-                                           data-category="{{ category_key }}"
-                                           value="{{ category_key }}.{{ diag_key }}"
-                                           {% if diag.checked %}checked{% endif %}>
+                                    <input
+                                            type="checkbox"
+                                            class="diag-checkbox"
+                                            data-category="{{ category_key }}"
+                                            value="{{ category_key }}.{{ diag_key }}"
+                                            {% if diag.checked %}checked{% endif %}
+                                    >
                                     {{ diag.name }}
                                 </div>
                                 {% endfor %}
+
                             </div>
                             {% endfor %}
                         </div>
 
+                        <!-- Selected Diagnostics -->
                         <div class="diagnostics-box">
                             <div class="box-title">Selected</div>
                             <div id="selectedDiagnosticsList"></div>
                         </div>
+
                     </div>
                 </div>
             </form>
         </div>
 
+        <!-- Modal Footer -->
         <div class="simple-modal-footer">
-            <button type="submit" form="createWatcherForm" id="confirmCreateWatcher" class="icon-text">
-                <span class="material-icons">shutter_speed_add</span> Create
+            <button
+                    type="submit"
+                    form="createWatcherForm"
+                    id="confirmCreateWatcher"
+                    class="icon-text"
+            >
+                <span class="material-icons">shutter_speed_add</span>
+                Create
             </button>
         </div>
+
     </div>
 </div>
 
-
+<!-- ======================================================
+     Share Watcher Modal
+     ====================================================== -->
 <div class="simple-modal-overlay" id="shareModal">
     <div class="simple-modal-container" style="width: 500px;">
 
+        <!-- Modal Header -->
         <div class="simple-modal-header">
             <div class="simple-modal-title">Share Watcher</div>
             <button class="close" onclick="closeShareModal()">
@@ -131,23 +237,29 @@
             </button>
         </div>
 
+        <!-- Modal Body -->
         <div class="simple-modal-body">
             <div class="form-grid" style="grid-template-columns: max-content auto;">
 
+                <!-- Share URL -->
                 <label>URL</label>
                 <input type="text" id="shareUrl" readonly>
 
+                <!-- Share PIN -->
                 <label>PIN</label>
                 <input type="text" id="sharePin" readonly>
 
             </div>
         </div>
 
+        <!-- Modal Footer -->
         <div class="simple-modal-footer">
             <button id="generateShareBtn" class="icon-text">
-                <span class="material-icons">vpn_key</span> Generate PIN
+                <span class="material-icons">vpn_key</span>
+                Generate PIN
             </button>
         </div>
+
     </div>
 </div>
 

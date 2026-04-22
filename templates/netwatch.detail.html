@@ -2,67 +2,115 @@
 
 {% block full_content %}
 
+<!-- =========================
+     Styles and Scripts
+     ========================= -->
 <link rel="stylesheet" href="{{ url_for('netwatch.static', filename='css/common.css') }}">
 <script src="{{ url_for('netwatch.static', filename='js/netwatch.api.js') }}"></script>
 <script src="{{ url_for('netwatch.static', filename='js/netwatch.detail.js') }}"></script>
 
+<!-- =========================
+     Global Variables (Injected from Backend)
+     ========================= -->
 <script>
     window.WATCHER_ID = "{{ watcher_id }}";
     window.WATCHER_NAME = "{{ watcher_name }}";
 </script>
 
-<div class="netwatch-topbar">
-    <div class="breadcrumb">
+<!-- =========================
+     Top Navigation Bar
+     - Contains breadcrumb and actions
+     ========================= -->
+<header class="netwatch-topbar">
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb">
         <a href="/netwatch">Netwatch</a>
         <span class="sep">></span>
         <span class="current">{{ watcher_name }}</span>
-    </div>
+    </nav>
+
+    <!-- Action Buttons -->
     <div class="netwatch-actions">
         {% if can_edit %}
-        <button class="icon-text" id="toggleBtn" onclick="toggleWatch()">
-            <span class="material-icons">play_arrow</span> Start
+        <button
+                class="icon-text"
+                id="toggleBtn"
+                onclick="toggleWatch()"
+        >
+            <span class="material-icons">play_arrow</span>
+            Start
         </button>
         {% endif %}
     </div>
-</div>
+</header>
 
-
-<div class="netwatch-status-bar">
+<!-- =========================
+     Status Bar
+     - Displays current watcher state and last update time
+     ========================= -->
+<section class="netwatch-status-bar">
+    <!-- Static Label -->
     <div style="font-weight: 600;">Status:</div>
 
+    <!-- Status Badge -->
     <span id="statusBadge" class="badge info">
-        Init
+      Init
     </span>
 
+    <!-- Last Updated Timestamp -->
     <div class="last-updated" style="margin-left: 10px;">
-        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">schedule</span>
+      <span
+              class="material-icons"
+              style="font-size: 16px; vertical-align: middle;"
+      >
+        schedule
+      </span>
         <span id="lastUpdated"></span>
     </div>
 
+    <!-- Status Text -->
     <span id="statusText" style="margin-left: auto;">
-        Initializing watcher...
+      Initializing watcher...
     </span>
+</section>
 
-</div>
-
-<div class="netwatch-table-container" id="tableContainer">
-
+<!-- =========================
+     Table Container
+     - Holds data table and overlay states
+     ========================= -->
+<section
+        class="netwatch-table-container"
+        id="tableContainer"
+>
     <!-- Empty / Initial State -->
     <div id="tableEmptyState" class="table-overlay">
-        <span class="material-icons" style="font-size: 36px;">info</span>
+      <span class="material-icons" style="font-size: 36px;">
+        info
+      </span>
         <div>No data yet</div>
     </div>
 
     <!-- Loading State -->
-    <div id="tableLoadingState" class="table-overlay" style="display:none;">
-        <span class="material-icons spin" style="font-size: 36px;">autorenew</span>
+    <div
+            id="tableLoadingState"
+            class="table-overlay"
+            style="display: none;"
+    >
+      <span class="material-icons spin" style="font-size: 36px;">
+        autorenew
+      </span>
         <div>Starting watcher...</div>
     </div>
 
-    <table id="watchTable" class="display" style="width:100%">
+    <!-- Data Table -->
+    <table
+            id="watchTable"
+            class="display"
+            style="width: 100%;"
+    >
         <thead></thead>
         <tbody></tbody>
     </table>
-</div>
+</section>
 
 {% endblock %}
