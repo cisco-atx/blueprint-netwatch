@@ -51,14 +51,14 @@ const NetwatchUI = {
     },
 
     formatStatusBadge(status) {
-        const value = (status || "").toUpperCase();
+        const value = status || "";
 
-        let cssClass = "status-notrun";
+        let cssClass = "info";
 
-        if (value === "RUNNING") cssClass = "status-pass";
-        else if (value === "STOPPED") cssClass = "status-fail";
+        if (value === "Running") cssClass = "pass";
+        else if (value === "Stopped") cssClass = "fail";
 
-        return `<span class="badge ${cssClass}">${value}</span>`;
+        return `<span class="badge ${cssClass}">${value.toUpperCase()}</span>`;
     },
 
     escapeHtml(value) {

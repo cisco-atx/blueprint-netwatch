@@ -29,14 +29,31 @@
 
 <div class="netwatch-status-bar">
     <div style="font-weight: 600;">Status:</div>
-    <span id="statusText">Loading...</span>
 
-    <span id="statusBadge" class="badge status-info" style="margin-left:auto;">
+    <span id="statusBadge" class="badge info">
         INIT
     </span>
+
+    <span id="statusText" style="margin-left: auto;">
+        Initializing watcher...
+    </span>
+
 </div>
 
-<div class="netwatch-table-container">
+<div class="netwatch-table-container" id="tableContainer">
+
+    <!-- Empty / Initial State -->
+    <div id="tableEmptyState" class="table-overlay">
+        <span class="material-icons" style="font-size: 36px;">info</span>
+        <div>No data yet</div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="tableLoadingState" class="table-overlay" style="display:none;">
+        <span class="material-icons spin" style="font-size: 36px;">autorenew</span>
+        <div>Starting watcher...</div>
+    </div>
+
     <table id="watchTable" class="display" style="width:100%">
         <thead></thead>
         <tbody></tbody>

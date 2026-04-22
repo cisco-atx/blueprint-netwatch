@@ -1,8 +1,8 @@
-
 let table;
 let watcherEventStream;
 let isRunning = false;
 let currentColumns = [];
+let currentStatus = "Not Started";
 
 $(document).ready(function () {
     $("#pinInput").on("keypress", function (e) {
@@ -123,23 +123,54 @@ function updateUi(event) {
     }
 
     const dataset = payload.data || {};
-    const running = payload.running || false;
+    const incomingStatus = payload.status;
 
-    $("#statusText").text(payload.message || "Idle");
-    updateStatusBadge(payload.status || (running ? "running" : "stopped"));
-
-    if (Object.keys(dataset).length === 0) {
+    if (shouldIgnoreTransition(currentStatus, incomingStatus)) {
         return;
     }
 
-    const discoveredColumns = getDynamicColumns(dataset);
+    currentStatus = incomingStatus || currentStatus;
 
-    if (JSON.stringify(discoveredColumns) !== JSON.stringify(currentColumns)) {
-        rebuildTable(discoveredColumns);
-        currentColumns = discoveredColumns;
+    $("#statusText").text(payload.log || "Idle");
+    updateStatusBadge(currentStatus);
+
+    updateTableState(currentStatus, dataset);
+}
+
+
+function updateTableState(status, dataset) {
+
+    if (status === "Starting") {
+        showLoadingState("Starting watcher...");
+        return;
     }
 
-    populateRows(dataset, discoveredColumns);
+    if (status === "Running") {
+
+        if (Object.keys(dataset).length === 0) {
+            showLoadingState("Waiting for data...");
+            return;
+        }
+
+        const discoveredColumns = getDynamicColumns(dataset);
+
+        if (JSON.stringify(discoveredColumns) !== JSON.stringify(currentColumns)) {
+            rebuildTable(discoveredColumns);
+            currentColumns = discoveredColumns;
+        }
+
+        showTable();
+        populateRows(dataset, discoveredColumns);
+        return;
+    }
+
+    if (status === "Stopped" || status === "Init") {
+        showEmptyState("Watcher is stopped");
+        if (table) {
+            table.clear().draw(false);
+        }
+        return;
+    }
 }
 
 /*
@@ -178,16 +209,27 @@ function rebuildTable(columns) {
 }
 
 
+function shouldIgnoreTransition(current, incoming) {
+    if (!incoming) return true;
+
+    if (current === "Starting" && incoming !== "Running") return true;
+    if (current === "Stopping" && incoming !== "Stopped") return true;
+
+    return false;
+}
+
 function updateStatusBadge(status) {
-    const value = (status || "init").toUpperCase();
+    const value = (status || "Init").toUpperCase();
 
-    let cssClass = "status-info";
+    let cssClass = "info";
 
-    if (value === "RUNNING") cssClass = "status-pass";
-    else if (value === "STOPPED") cssClass = "status-fail";
+    if (value === "RUNNING") cssClass = "pass";
+    else if (value === "STOPPED") cssClass = "fail";
+    else if (value === "STARTING") cssClass = "info";
+    else if (value === "STOPPING") cssClass = "info";
 
     $("#statusBadge")
-        .removeClass("status-pass status-fail status-info")
+        .removeClass("pass fail info")
         .addClass(cssClass)
         .text(value);
 }
@@ -213,10 +255,6 @@ function populateRows(dataset, columns) {
                     return value.join("<br>");
                 }
 
-                if (col === "Status") {
-                    return formatStatusBadge(value);
-                }
-
                 return value || "";
             });
 
@@ -227,21 +265,27 @@ function populateRows(dataset, columns) {
     table.draw(false);
 }
 
-/*
- * Formats the status value into a styled badge.
- * It assigns different CSS classes based on the status value for visual distinction.
- */
-function formatStatusBadge(status) {
-    const value = (status || '').toLowerCase();
 
-    let cssClass = 'status-info';
-    let label = status || 'UNKNOWN';
-    if (value === 'connected') {
-        cssClass = 'status-pass';
-    } else if (value === 'notconnec') {
-        cssClass = 'status-warn';
-    } else if (value === 'disabled') {
-        cssClass = 'status-notrun';
+function showEmptyState(message = "No data yet") {
+    $("#tableEmptyState").show().find("div").text(message);
+    $("#tableLoadingState").hide();
+    $("#watchTable").hide();
+}
+
+function showLoadingState(message = "Loading...") {
+    $("#tableEmptyState").hide();
+    $("#tableLoadingState").show().find("div").text(message);
+    $("#watchTable").hide();
+}
+
+function showTable() {
+    $("#tableEmptyState").hide();
+    $("#tableLoadingState").hide();
+    $("#watchTable").show();
+
+    if (table) {
+        setTimeout(() => {
+            table.columns.adjust().draw(false);
+        }, 0);
     }
-    return `<span class="badge ${cssClass}">${label.toUpperCase()}</span>`;
 }

@@ -3,6 +3,7 @@
 let watchersTable = null;
 let createWatcherCallback = null;
 let watchersStream = null;
+const watcherUIState = {};
 
 /* =========================
    INIT
@@ -96,14 +97,29 @@ function populateWatchers(data) {
     watchersTable.clear();
 
     data.forEach(row => {
-        const statusBadge = NetwatchUI.formatStatusBadge(row.status);
+        const uiState = watcherUIState[row.id];
+
+        let effectiveStatus = row.status;
+
+        if (uiState === "Starting" && row.status !== "Running") {
+            effectiveStatus = "Starting";
+        } else if (uiState === "Stopping" && row.status !== "Stopped") {
+            effectiveStatus = "Stopping";
+        } else {
+            watcherUIState[row.id] = null;
+        }
+
+        const statusBadge = NetwatchUI.formatStatusBadge(effectiveStatus);
 
         const nameLink = `
             <a class="watcher-link-text" href="/netwatch/${row.id}">
-                ${NetwatchUI.escapeHtml(row.name)}
+                ${NetwatchUI.escapeHtml(row.id)}
             </a>
         `;
-        const actions = (row.creator === CURRENT_USERNAME) ? renderActionButtons(row) : "";
+
+        const actions = (row.creator === CURRENT_USERNAME)
+            ? renderActionButtons(row, effectiveStatus)
+            : "";
 
         watchersTable.row.add([
             nameLink,
@@ -121,14 +137,28 @@ function populateWatchers(data) {
 /* =========================
    ACTION BUTTONS
 ========================= */
-function renderActionButtons(row) {
-    const isRunning = (row.status || "").toUpperCase() === "RUNNING";
+function renderActionButtons(row, effectiveStatus) {
+    let buttonHtml = "";
+
+    if (effectiveStatus === "Starting") {
+        buttonHtml = NetwatchUI.buttons.starting;
+    } else if (effectiveStatus === "Stopping") {
+        buttonHtml = NetwatchUI.buttons.stopping;
+    } else if (effectiveStatus === "Running") {
+        buttonHtml = NetwatchUI.buttons.stop;
+    } else {
+        buttonHtml = NetwatchUI.buttons.start;
+    }
+
+    const disabled =
+        effectiveStatus === "Starting" || effectiveStatus === "Stopping";
 
     return `
         <div style="display:flex; gap:6px;">
             <button class="icon-text"
-                onclick="toggleWatcher('${row.id}', '${row.status}', this)">
-                ${isRunning ? NetwatchUI.buttons.stop : NetwatchUI.buttons.start}
+                ${disabled ? "disabled" : ""}
+                onclick="toggleWatcher('${row.id}', '${effectiveStatus}', this)">
+                ${buttonHtml}
             </button>
 
             <button class="icon-text"
@@ -177,9 +207,7 @@ function closeShareModal() {
 }
 
 async function toggleWatcher(id, status, btn) {
-    const isRunning = (status || "").toUpperCase() === "RUNNING";
-
-    if (isRunning) {
+    if (status === "Running") {
         await stopWatcher(id, btn);
     } else {
         await startWatcher(id, btn);
@@ -187,6 +215,8 @@ async function toggleWatcher(id, status, btn) {
 }
 
 async function startWatcher(id, btn) {
+    watcherUIState[id] = "Starting";
+
     NetwatchUI.setLoading(btn, NetwatchUI.buttons.starting);
 
     try {
@@ -194,10 +224,14 @@ async function startWatcher(id, btn) {
     } catch (err) {
         console.error(err);
         alert("Failed to start watcher");
+
+        watcherUIState[id] = null;
     }
 }
 
 async function stopWatcher(id, btn) {
+    watcherUIState[id] = "Stopping";
+
     NetwatchUI.setLoading(btn, NetwatchUI.buttons.stopping);
 
     try {
@@ -205,6 +239,8 @@ async function stopWatcher(id, btn) {
     } catch (err) {
         console.error(err);
         alert("Failed to stop watcher");
+
+        watcherUIState[id] = null;
     }
 }
 
@@ -251,6 +287,10 @@ function initCreateWatcherModal() {
         createWatcherCallback = onConfirm;
         await loadConnectors();
         modal.style.display = "flex";
+        setTimeout(() => {
+            updateSelectedList();
+            syncAllCategoryCheckboxes();
+        }, 0);
     };
 
     function closeModal() {
@@ -264,11 +304,12 @@ function initCreateWatcherModal() {
         const name = $("#watcherName").val().trim();
         const devices = $("#watcherDevices").val().trim();
         const connectorName = connectorSelect.value;
+        const diagnostics = getSelectedDiagnostics();
 
         if (!name) return alert("Watcher name is required");
         if (!devices) return alert("At least one device is required");
         if (!connectorName) return alert("Please select a connector");
-
+        if (Object.keys(diagnostics).length === 0) return alert("Please select at least one diagnostic");
 
         const existingNames = watchersTable.column(0).data().toArray().map(html => {
             const div = document.createElement("div");
@@ -289,7 +330,7 @@ function initCreateWatcherModal() {
         closeModal();
 
         if (typeof createWatcherCallback === "function") {
-            createWatcherCallback({ name, devices, config });
+            createWatcherCallback({ id:name, devices, config, diagnostics});
         }
     });
 
@@ -316,3 +357,68 @@ async function createWatcher(payload) {
         alert("Failed to create watcher");
     }
 }
+
+function updateSelectedList() {
+    const list = document.getElementById("selectedDiagnosticsList");
+    list.innerHTML = "";
+
+    document.querySelectorAll(".diag-checkbox:checked").forEach(cb => {
+        const item = document.createElement("div");
+        item.textContent = cb.parentElement.textContent.trim();
+        item.classList.add("selected-item");
+        item.dataset.value = cb.value;
+        list.appendChild(item);
+    });
+}
+
+function syncAllCategoryCheckboxes() {
+    document.querySelectorAll(".category-checkbox").forEach(catCb => {
+        const category = catCb.dataset.category;
+
+        const all = document.querySelectorAll(`.diag-checkbox[data-category="${category}"]`);
+        const checked = document.querySelectorAll(`.diag-checkbox[data-category="${category}"]:checked`);
+
+        catCb.checked = all.length > 0 && all.length === checked.length;
+    });
+}
+
+function getSelectedDiagnostics() {
+    const result = {};
+    document.querySelectorAll(".diag-checkbox:checked").forEach(cb => {
+        const [category, diag] = cb.value.split(".");
+        if (!result[category]) {
+            result[category] = [];
+        }
+        result[category].push(diag);
+    });
+
+    return result;
+}
+
+// Individual checkbox change
+document.addEventListener("change", function (e) {
+    if (e.target.classList.contains("diag-checkbox")) {
+        updateSelectedList();
+
+        // update category checkbox state
+        const category = e.target.dataset.category;
+        const all = document.querySelectorAll(`.diag-checkbox[data-category="${category}"]`);
+        const checked = document.querySelectorAll(`.diag-checkbox[data-category="${category}"]:checked`);
+
+        const categoryCheckbox = document.querySelector(`.category-checkbox[data-category="${category}"]`);
+        categoryCheckbox.checked = all.length === checked.length;
+    }
+});
+
+// Category checkbox change
+document.addEventListener("change", function (e) {
+    if (e.target.classList.contains("category-checkbox")) {
+        const category = e.target.dataset.category;
+        const checked = e.target.checked;
+
+        document.querySelectorAll(`.diag-checkbox[data-category="${category}"]`)
+            .forEach(cb => cb.checked = checked);
+
+        updateSelectedList();
+    }
+});

@@ -2,13 +2,14 @@
 
 let table = null;
 let watcherEventStream = null;
-let isRunning = false;
+let watcherStatus = '';
 let currentColumns = [];
 
 /* =========================
    INIT
 ========================= */
 $(document).ready(function () {
+    showEmptyState();
     initStream();
 });
 
@@ -33,16 +34,12 @@ function initStream() {
 function handleStreamUpdate(event) {
     const payload = JSON.parse(event.data);
     const dataset = payload.data || {};
+    const status = payload.status || "INIT";
 
     updateHeader(payload);
     updateStatus(payload);
 
-    if (Object.keys(dataset).length === 0) {
-        clearTable();
-        return;
-    }
-
-    updateTable(dataset);
+    updateTableState(status, dataset);
 }
 
 
@@ -50,43 +47,75 @@ function handleStreamUpdate(event) {
    HEADER / STATUS
 ========================= */
 function updateHeader(payload) {
-    $("#statusText").text(payload.message || "Loading...");
+    $("#statusText").text(payload.log || "Loading...");
 }
 
 function updateStatus(payload) {
-    const running = payload.running || false;
+    const incoming = payload.status;
 
-    setRunningState(running);
-    updateStatusBadge(payload.status || (running ? "running" : "stopped"));
+    // Allow only valid transitions
+    if (watcherStatus === "Starting" && incoming !== "Running") return;
+    if (watcherStatus === "Stopping" && incoming !== "Stopped") return;
+
+    setRunningState(incoming);
+    updateStatusBadge(incoming);
 }
 
-function setRunningState(running) {
-    isRunning = running;
+function setRunningState(status) {
+    watcherStatus = status;
 
     const btn = $("#toggleBtn");
-    if (!btn.length) return; // no permission (can_edit = false)
+    if (!btn.length) return;
 
-    btn.html(
-        running
-            ? NetwatchUI.buttons.stop
-            : NetwatchUI.buttons.start
-    );
+    btn.prop("disabled", false);
+
+    if (status === "Running") {
+        btn.html(NetwatchUI.buttons.stop);
+    } else if (status === "Stopped") {
+        btn.html(NetwatchUI.buttons.start);
+    }
 }
 
 function updateStatusBadge(status) {
-    const value = (status || "init").toUpperCase();
+    const value = status || "Not Started";
 
-    let cssClass = "status-info";
+    let cssClass = "info";
 
-    if (value === "RUNNING") cssClass = "status-pass";
-    else if (value === "STOPPED") cssClass = "status-fail";
+    if (value === "Running") cssClass = "pass";
+    else if (value === "Stopped") cssClass = "fail";
+    else if (value === "Starting") cssClass = "info";
+    else if (value === "Stopping") cssClass = "info";
 
     $("#statusBadge")
-        .removeClass("status-pass status-fail status-info")
+        .removeClass("pass fail info")
         .addClass(cssClass)
-        .text(value);
+        .text(value.toUpperCase());
 }
 
+
+function updateTableState(status, dataset) {
+    if (status === "Starting") {
+        showLoadingState("Starting watcher...");
+        return;
+    }
+
+    if (status === "Running") {
+        if (Object.keys(dataset).length === 0) {
+            showLoadingState("Waiting for data...");
+            return;
+        }
+
+        showTable();
+        updateTable(dataset);
+        return;
+    }
+
+    if (status === "Stopped" || status === "Init") {
+        showEmptyState("Watcher is stopped");
+        clearTable();
+        return;
+    }
+}
 
 /* =========================
    TABLE MANAGEMENT
@@ -136,7 +165,7 @@ function rebuildTable(columns) {
         </tr>
         <tr>
             ${columns.map((_, i) =>
-                `<th><input type="text" class="col-filter" data-col="${i}" placeholder="Filter"></th>`
+                `<th><input type="text" class="col-filter" data-col="${i}" placeholder="Filter.."></th>`
             ).join("")}
         </tr>
     `;
@@ -166,8 +195,13 @@ function bindFilters() {
         $(this).on('keyup change clear', function () {
             const val = this.value;
 
-            if (table.column(colIndex).search() !== val) {
-                table.column(colIndex).search(val).draw();
+            try {
+                table
+                    .column(colIndex)
+                    .search(val, true, false, true)
+                    .draw();
+            } catch (e) {
+                console.warn("Invalid regex:", val);
             }
         });
     });
@@ -185,17 +219,7 @@ function populateRows(dataset, columns) {
                 if (col === "Device") return device;
                 if (col === "Interface") return iface;
 
-                const value = row[col];
-
-                if (Array.isArray(value)) {
-                    return value.join("<br>");
-                }
-
-                if (col === "Status") {
-                    return formatInterfaceStatus(value);
-                }
-
-                return value || "";
+                return  row[col] || "";
             });
 
             table.row.add(rowData);
@@ -205,25 +229,11 @@ function populateRows(dataset, columns) {
     table.draw(false);
 }
 
-function formatInterfaceStatus(status) {
-    const value = (status || "").toLowerCase();
-
-    let cssClass = "status-info";
-    let label = status || "UNKNOWN";
-
-    if (value === "connected") cssClass = "status-pass";
-    else if (value === "notconnec") cssClass = "status-warn";
-    else if (value === "disabled") cssClass = "status-notrun";
-
-    return `<span class="badge ${cssClass}">${label.toUpperCase()}</span>`;
-}
-
-
 /* =========================
    ACTION BUTTON
 ========================= */
 function toggleWatch() {
-    if (isRunning) {
+    if (watcherStatus === "Running") {
         stopWatch();
     } else {
         startWatch();
@@ -233,29 +243,60 @@ function toggleWatch() {
 async function startWatch() {
     const btn = $("#toggleBtn");
 
+    watcherStatus = "Starting";
+    showLoadingState("Starting watcher...");
+
     NetwatchUI.setLoading(btn[0], NetwatchUI.buttons.starting);
+    updateStatusBadge("Starting");
+    $("#statusText").text("Starting watcher...");
 
     try {
         await NetwatchAPI.start(window.WATCHER_ID);
     } catch (err) {
         console.error(err);
         alert("Failed to start watcher");
-    } finally {
-        btn.prop("disabled", false);
+
+        watcherStatus = "Stopped";
+        setRunningState("Stopped");
+        updateStatusBadge("Stopped");
     }
 }
 
 async function stopWatch() {
     const btn = $("#toggleBtn");
 
+    watcherStatus = "Stopping";
+
     NetwatchUI.setLoading(btn[0], NetwatchUI.buttons.stopping);
+    updateStatusBadge("Stopping");
+    $("#statusText").text("Stopping watcher...");
 
     try {
         await NetwatchAPI.stop(window.WATCHER_ID);
     } catch (err) {
         console.error(err);
         alert("Failed to stop watcher");
-    } finally {
-        btn.prop("disabled", false);
+
+        watcherStatus = "Running";
+        setRunningState("Running");
+        updateStatusBadge("Running");
     }
+}
+
+function showEmptyState(message = "No data yet") {
+    $("#tableEmptyState").show().find("div").text(message);
+    $("#tableLoadingState").hide();
+    $("#watchTable").hide();
+}
+
+function showLoadingState(message = "Loading...") {
+    $("#tableEmptyState").hide();
+    $("#tableLoadingState").show().find("div").text(message);
+    $("#watchTable").hide();
+}
+
+function showTable() {
+    $("#tableEmptyState").hide();
+    $("#tableLoadingState").hide();
+    $("#watchTable").show();
 }

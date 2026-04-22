@@ -47,7 +47,7 @@
 
 <!-- Create Watcher Modal -->
 <div class="simple-modal-overlay" id="createWatcherModal">
-    <div class="simple-modal-container" style="width: 650px;">
+    <div class="simple-modal-container" style="width: 1000px;">
 
         <div class="simple-modal-header">
             <div class="simple-modal-title">Create Watcher</div>
@@ -69,6 +69,39 @@
                     <select id="watcherConnector" required>
                         <option value="">-- Select Connector --</option>
                     </select>
+
+                    <label>Diagnostics</label>
+                    <div class="diagnostics-container">
+                        <div class="diagnostics-box">
+                            <div class="box-title">Available</div>
+
+                            {% for category_key, category in DIAGNOSTICS.items() %}
+                            <div class="diag-category">
+                                <div class="category-header">
+                                    <input type="checkbox" class="category-checkbox" data-category="{{ category_key }}">
+                                    <div class="category-header-text">{{ category.name }}</div>
+                                    <div class="category-header-source">{{ category.source }}</div>
+                                </div>
+
+                                {% for diag_key, diag in category.diagnostics.items() %}
+                                <div class="category-item">
+                                    <input type="checkbox"
+                                           class="diag-checkbox"
+                                           data-category="{{ category_key }}"
+                                           value="{{ category_key }}.{{ diag_key }}"
+                                           {% if diag.checked %}checked{% endif %}>
+                                    {{ diag.name }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="diagnostics-box">
+                            <div class="box-title">Selected</div>
+                            <div id="selectedDiagnosticsList"></div>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
