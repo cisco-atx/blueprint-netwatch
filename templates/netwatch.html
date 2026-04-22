@@ -66,9 +66,15 @@
                     <input type="text" id="watcherDevices" required placeholder="10.1.1.1, 10.1.1.2">
 
                     <label>Connector</label>
-                    <select id="watcherConnector" required>
-                        <option value="">-- Select Connector --</option>
-                    </select>
+                    <div style="display: flex; gap: 30px; align-items: center;">
+                        <select id="watcherConnector" required>
+                            <option value="">-- Select Connector --</option>
+                        </select>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label>Interval</label>
+                            <input type="text" placeholder="seconds" id="watcherInterval">
+                        </div>
+                    </div>
 
                     <label>Diagnostics</label>
                     <div class="diagnostics-container">

@@ -50,6 +50,7 @@ def create_watch():
     ]
     connector = payload.get("config") or {}
     diagnostics = payload.get("diagnostics", {})
+    interval = int(connector.get("interval", 10))
     creator = get_current_user()
 
     record = manager.create(
@@ -57,6 +58,7 @@ def create_watch():
         devices=devices,
         connector=connector,
         diagnostics=diagnostics,
+        interval=interval,
         creator=creator
     )
 
@@ -129,6 +131,7 @@ def stream(watcher_id):
                 payload = json.dumps({
                     "log": "Watcher not found",
                     "status": False,
+                    "last_updated": None,
                     "data": {}
                 })
                 yield f"data: {payload}\n\n"
@@ -222,6 +225,7 @@ def public_stream(watcher_id):
                 payload = json.dumps({
                     "log": "Watcher not found",
                     "status": False,
+                    "last_updated": None,
                     "data": {}
                 })
                 yield f"data: {payload}\n\n"

@@ -36,9 +36,7 @@ function handleStreamUpdate(event) {
     const dataset = payload.data || {};
     const status = payload.status || "INIT";
 
-    updateHeader(payload);
     updateStatus(payload);
-
     updateTableState(status, dataset);
 }
 
@@ -57,6 +55,9 @@ function updateStatus(payload) {
     if (watcherStatus === "Starting" && incoming !== "Running") return;
     if (watcherStatus === "Stopping" && incoming !== "Stopped") return;
 
+
+    $("#statusText").text(payload.log || "Loading...");
+    $("#lastUpdated").text("Last Updated: " + (payload.last_updated|| "Never"));
     setRunningState(incoming);
     updateStatusBadge(incoming);
 }
@@ -112,6 +113,7 @@ function updateTableState(status, dataset) {
 
     if (status === "Stopped" || status === "Init") {
         showEmptyState("Watcher is stopped");
+        $("#lastUpdated").text("Last Updated: N/A");
         clearTable();
         return;
     }

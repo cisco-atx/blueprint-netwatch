@@ -138,10 +138,11 @@ class WatcherManager:
     def __init__(self):
         self.watchers = {}
 
-    def create(self, id, devices, connector, diagnostics, creator):
+    def create(self, id, devices, connector, interval, diagnostics, creator):
         watcher = Watcher(
             devices=devices,
             connector=connector,
+            interval=interval,
             diagnostics=diagnostics
         )
 
@@ -220,7 +221,7 @@ class WatcherManager:
 
 
 class Watcher:
-    def __init__(self, devices, connector, diagnostics, interval=10):
+    def __init__(self, devices, connector, interval, diagnostics):
         self.executor = DeviceExecutor(self, devices, connector, diagnostics)
         self.interval = interval
         self.stop_event = threading.Event()
@@ -229,6 +230,7 @@ class Watcher:
 
         self.status = "Not Started"
         self.log = "Watcher initialized."
+        self.last_updated = None
 
     def start(self):
         self.log = "Starting watcher..."
@@ -270,6 +272,7 @@ class Watcher:
             return {
                 "status": self.status,
                 "log": self.log,
+                "last_updated": self.last_updated,
                 "data": self.executor.data
             }
 
@@ -305,6 +308,7 @@ class DeviceExecutor:
             return device, handler
 
         except Exception as e:
+            self.watcher.log = f"Failed to connect {device}: {e}"
             logging.error(f"Failed to connect {device}: {e}")
             return device, None
 
@@ -365,7 +369,10 @@ class DeviceExecutor:
 
                 all_devices_data[device] = self._filter(common_data)
 
+                self.watcher.last_updated = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
+
             except Exception as e:
+                self.watcher.log = f"Data collection failed for {device}: {e}"
                 logging.error(f"Collection failed for {device}: {e}")
 
         self.data = all_devices_data

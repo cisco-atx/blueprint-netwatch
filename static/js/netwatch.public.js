@@ -132,6 +132,7 @@ function updateUi(event) {
     currentStatus = incomingStatus || currentStatus;
 
     $("#statusText").text(payload.log || "Idle");
+    $("#lastUpdated").text("Last Updated: " + (payload.last_updated|| "Never"));
     updateStatusBadge(currentStatus);
 
     updateTableState(currentStatus, dataset);
@@ -166,6 +167,7 @@ function updateTableState(status, dataset) {
 
     if (status === "Stopped" || status === "Init") {
         showEmptyState("Watcher is stopped");
+        $("#lastUpdated").text("Last Updated: N/A");
         if (table) {
             table.clear().draw(false);
         }

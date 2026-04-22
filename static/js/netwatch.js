@@ -303,11 +303,15 @@ function initCreateWatcherModal() {
 
         const name = $("#watcherName").val().trim();
         const devices = $("#watcherDevices").val().trim();
+        const interval = $("#watcherInterval").val().trim() || "10";
         const connectorName = connectorSelect.value;
         const diagnostics = getSelectedDiagnostics();
 
         if (!name) return alert("Watcher name is required");
         if (!devices) return alert("At least one device is required");
+        if (!interval || isNaN(interval) || parseInt(interval) <= 0) {
+            return alert("Interval must be a positive number");
+        }
         if (!connectorName) return alert("Please select a connector");
         if (Object.keys(diagnostics).length === 0) return alert("Please select at least one diagnostic");
 
@@ -330,7 +334,7 @@ function initCreateWatcherModal() {
         closeModal();
 
         if (typeof createWatcherCallback === "function") {
-            createWatcherCallback({ id:name, devices, config, diagnostics});
+            createWatcherCallback({ id:name, devices, config, diagnostics, interval});
         }
     });
 
