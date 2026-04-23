@@ -1,3 +1,13 @@
+/**
+ * netwatch.api.js
+ *
+ * This file contains the NetwatchAPI object, which provides methods to interact with the Netwatch backend API,
+ * including listing watchers, creating new watchers, starting, stopping, and deleting existing watchers.
+ * The NetwatchUI object provides helper functions for managing UI elements related to Netwatch, such as setting
+ * loading states on buttons and formatting status badges for display.
+ * Both objects are designed to facilitate the integration of Netwatch functionalities into a web interface.
+ */
+
 const NetwatchAPI = {
     async request(url, method = "POST", body = null) {
         const res = await fetch(url, {

@@ -1,4 +1,14 @@
-/* NetWatch - Watcher Detail Page */
+/**
+ * netwatch.detail.js
+ *
+ * This script manages the dynamic behavior of the Netwatch detail page.
+ * It establishes a Server-Sent Events (SSE) connection to receive real-time updates
+ * about the watcher's status and dataset. The script handles:
+ * - Updating the status header and badge based on incoming data.
+ * - Dynamically generating and populating a DataTable with the watcher's dataset.
+ * - Providing a toggle button to start/stop the watcher, with appropriate UI feedback.
+ * - Managing loading and empty states for better user experience.
+ */
 
 let table = null;
 let watcherEventStream = null;

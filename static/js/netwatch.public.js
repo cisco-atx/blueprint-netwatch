@@ -1,3 +1,15 @@
+/*
+ * netwatch.public.js
+ *
+ * This JavaScript file manages the client-side functionality for the NetWatch public interface.
+ * It handles user interactions, establishes a connection to the server via EventSource,
+ * Main functionalities include:
+ * - Submitting a PIN to connect to the NetWatch stream
+ * - Listening for real-time updates from the server and updating the table and status accordingly
+ * - Dynamically building and filtering a DataTable based on the received dataset
+ * - Managing connection states and providing user feedback through status badges and messages
+ */
+
 let table;
 let watcherEventStream;
 let isRunning = false;

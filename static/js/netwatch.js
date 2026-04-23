@@ -1,4 +1,19 @@
-/* NetWatch - Watchers List Page */
+/**
+ * Netwatch.js
+ *
+ * This file contains the main JavaScript logic for the Netwatch web interface.
+ * It handles:
+ * - Initializing the watchers table with DataTables
+ * - Binding filter inputs for real-time searching
+ * - Managing a Server-Sent Events (SSE) stream for live updates of watcher data
+ * - Rendering action buttons based on watcher status and user permissions
+ * - Implementing the create watcher modal with dynamic connector loading and diagnostic selection
+ * - Providing functions to start, stop, delete, and share watchers through API calls
+ *
+ * The code is structured to ensure a responsive and interactive user experience while managing network watchers.
+ */
+
+
 
 let watchersTable = null;
 let createWatcherCallback = null;
